@@ -1,7 +1,9 @@
 # Ejercicio_Padron_Madrid
 Entrenamiento en Hive, Impala
 
-Los scripts completos se colocarán en las carpetas respectivas a medida que se vaya completando el proyecto.
+Los scripts completos se colocarán en las carpetas respectivas a medida que se vaya completando el proyecto. Los scripts estan disponibles como se exportaron originalmente (JSON), asi como un hql creado a partir de un bloc de notas con el codigo correspondiente.
+El documento pdf original con las cuestines tambien se encuentra disponible en el respostorio.
+
 
 A partir de los datos (CSV) de Padrón de Madrid:
 
