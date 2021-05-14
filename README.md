@@ -1,6 +1,8 @@
 # Ejercicio_Padron_Madrid
 Entrenamiento en Hive, Impala
 
+Los scripts completos se colocarán en las carpetas respectivas a medida que se vaya completando el proyecto.
+
 A partir de los datos (CSV) de Padrón de Madrid:
 
 https://datos.madrid.es/egob/catalogo/200076-1-padron.csv
