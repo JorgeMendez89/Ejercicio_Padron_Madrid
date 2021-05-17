@@ -61,7 +61,7 @@ drop table padron_txt;
 
 create table padron_txt as
 select
-cast(COD_DISTRITO as int) COD_DISTRITO,
+cast (COD_DISTRITO as int) COD_DISTRITO,
 cast (DESC_DISTRITO as string) DESC_DISTRITO,
 cast (COD_DIST_BARRIO as int) COD_DIST_BARRIO,
 cast (DESC_BARRIO as string) DESC_BARRIO,
@@ -80,7 +80,6 @@ show create table padron_txt;
 -- rawDataSize = 16972157' 
 -- totalSize = 17 209 982'
 
-select * from padron_txt;
 ```
 
 - 1.3. Hacer trim sobre los datos para eliminar los espacios innecesarios guardando la tabla resultado como padron_txt_2. (Este apartado se puede hacer creando la tabla
@@ -105,7 +104,6 @@ ExtranjerosHombres ExtranjerosHombres,
 ExtranjerosMujeres ExtranjerosMujeres
 from padron_txt;
 
-select * from padron_txt_2;
 show create table padron_txt_2;
 -- numRows = 237825 
 -- rawDataSize = 12465434 
@@ -136,7 +134,6 @@ cast(case when (length(ExtranjerosHombres) = 0) Then "0"  else (trim(Extranjeros
 cast(case when (length(ExtranjerosMujeres) = 0) Then "0"  else (trim(ExtranjerosMujeres)) end as int)ExtranjerosMujeres
 FROM padron_raw;
 
-select * from padron_txt_3;
 show create table padron_txt_3;
 -- numRows = 237825 
 -- rawDataSize = 11709190 
@@ -176,19 +173,20 @@ TBLPROPERTIES("skip.header.line.count" = "1");
 load data local inpath '/home/cloudera/padron/padron.csv' 
 into table padron_txt_reg;
 
-select * from padron_txt_reg;
 show create table padron_txt_reg;
 -- 'totalSize'='22594627'
 
--- cambiar codificacion de el archivo csv a utf8 para que pueda reconocer las ñ
-
+```
+Cambiar codificacion del archivo csv a utf8 para que pueda reconocer las ñ.
+Hago un select antes de y despues para ver si reconoce la letra ñ (buscar opañel por ejemplo).
+```
 select * from padron_txt_reg where Upper(desc_barrio) LIKE "O%";
 ```
 
 2. Investigamos el formato columnar parquet.
 
 - 2.1. ¿Qué es CTAS?
-Crear una tabla a partir de otra, haciendo select de las columnas de las colmnas que se quieran tomar para esta nueva tabla.
+Create Table As Select - Crear una tabla a partir de otra, haciendo select de las columnas de las colmnas que se quieran tomar para esta nueva tabla.
 
 - 2.2. Crear tabla Hive padron_parquet (cuyos datos serán almacenados en el formato columnar parquet) a través de la tabla padron_txt mediante un CTAS.
 ```
@@ -211,7 +209,6 @@ cast(ExtranjerosHombres as int) ExtranjerosHombres,
 cast(ExtranjerosMujeres as int) ExtranjerosMujeres
 from padron_raw;
 
-select * from  padron_parquet;
 show create table padron_parquet;
 -- numRows = 237825 
 -- rawDataSize = 2853900 
@@ -228,13 +225,14 @@ as
 select *
 from padron_txt_2;
 
-select * from  padron_parquet_2;
 show create table padron_parquet_2;
 -- numRows = 237825  
 -- rawDataSize = 2853900  
 -- totalSize = 874 007  
 
--- crear parquet de la tabla que menos ha pesado como txt
+```
+Crear parquet de la tabla que menos ha pesado como txt
+```
 drop table padron_parquet_3;
 
 create table padron_parquet_3
@@ -243,7 +241,6 @@ as
 select *
 from padron_txt_3;
 
-select * from  padron_parquet_3;
 show create table padron_parquet_3;
 -- numRows = 237825 
 -- rawDataSize = 2616075 
@@ -274,8 +271,9 @@ WITH SERDEPROPERTIES ('input.regex'='"(\\d*)"\;"(.*?)\\s*"\;"(\\d*)"\;"(.*?)\s*"
 STORED AS PARQUET
 TBLPROPERTIES("skip.header.line.count" = "1");
 
--- al ejecutar este llenado de la tabla, se hace sin problema, pero al ser lazy, cuando se quiere hacer un select
--- muestra que no se puede llenar una tabla parquet con un archivo que no sea parquet, en este caso csv
+```
+Al ejecutar este llenado de la tabla, se hace sin problema, pero al ser lazy, cuando se quiere hacer un select  muestra que no se puede llenar una tabla parquet con un archivo que no sea parquet, en este caso csv
+```
 load data local inpath '/home/cloudera/padron/padron.csv' 
 into table padron_parquet_reg;
 ```
@@ -295,45 +293,45 @@ gzip
 
 - 2.6. Comparar el tamaño de los ficheros de los datos de las tablas padron_txt (txt), padron_txt_2 (txt pero no incluye los espacios innecesarios), padron_parquet y padron_parquet_2 (alojados en hdfs cuya ruta se puede obtener de la propiedad location de cada tabla por ejemplo haciendo "show create table").
 
-#### padron_raw (txt con serde sin cast - colomunas como string)
-totalSize = 22 594 627, 
+### padron_raw (txt con serde sin cast - colomunas como string)
+- totalSize = 22 594 627, 
 
 
-#### padron_txt (ctas de padron_raw con cast para los tipos de columnas)
-numRows = 237825' 
-rawDataSize = 16972157' 
-totalSize = 17 209 982'
+### padron_txt (ctas de padron_raw con cast para los tipos de columnas)
+- numRows = 237 825 
+- rawDataSize = 16 972 157 
+- totalSize = 17 209 982'
 
 
-#### table padron_txt_2 (ctas de padron_txt con trim en columnas string)
-numRows = 237825 
-rawDataSize = 12465434 
-totalSize = 12 703 259 
+### table padron_txt_2 (ctas de padron_txt con trim en columnas string)
+- numRows = 237 825
+- rawDataSize = 12 465 434 
+- totalSize = 12 703 259 
 
 
-#### table padron_txt_3 (ctas de padron_raw poniendo 0 a los valores vacios y cast a topdas las columnas)
-numRows = 237825 
-rawDataSize = 11709190 
-totalSize = 11 947 015 
+### table padron_txt_3 (ctas de padron_raw poniendo 0 a los valores vacios y cast a topdas las columnas)
+- numRows = 237 825 
+- rawDataSize = 11 709 190 
+- totalSize = 11 947 015 
 
 
-#### table padron_txt_reg (desde 0 con expresiones regulares - columnas como string)
-'totalSize'='22594627'
+### table padron_txt_reg (desde 0 con expresiones regulares - columnas como string)
+- totalSize = 22 594 627
 
 
-#### table padron_parquet (ctas de padron_raw con cast a las columnas)
-numRows = 237825 
-rawDataSize = 2853900 
-totalSize = 876 046 
+### table padron_parquet (ctas de padron_raw con cast a las columnas)
+- numRows = 237 825
+- rawDataSize = 2 853 900 
+- totalSize = 876 046 
 
 
-#### table padron_parquet_2 (ctas de padron_txt_2)
-numRows = 237825  
-rawDataSize = 2853900  
-totalSize = 874 007 
+### table padron_parquet_2 (ctas de padron_txt_2)
+- numRows = 237 825  
+- rawDataSize = 2 853 900  
+- totalSize = 874 007 
 
 
-#### table padron_parquet_3 (ctas de padron_txt_3)
-numRows = 237825 
-rawDataSize = 2616075 
-totalSize = 937 485 
+### table padron_parquet_3 (ctas de padron_txt_3)
+- numRows = 237 825 
+- rawDataSize =  2 616 075 
+- totalSize = 937 485 
