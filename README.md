@@ -11,6 +11,7 @@ https://datos.madrid.es/egob/catalogo/200076-1-padron.csv
 
 llevar a cabo lo siguiente:
 
+`Los siguientes puntos se desarrollan en HIVE, cuando el ejercicio lo pida se cambiara a Imapala, y se pondra una nota de aviso.`
 ## 1. Creación de tablas en formato texto.
 
 ### 1.1. Crear Base de datos "datos_padron".
@@ -368,6 +369,271 @@ from padron_txt_3
 group by desc_distrito, desc_barrio
 order by desc_distrito, desc_barrio;
 ```
+
+`Impala`
 ### 3.6. Llevar a cabo las consultas en Hive en las tablas padron_txt_2 y padron_parquet_2 (No deberían incluir espacios innecesarios). ¿Alguna conclusión?
 
-El tiempo de respuesta es mucho mayor en hive que en impala, ademas de que hive
+```
+select sum(espanoleshombres) total_hombres_espanoles, sum(espanolesmujeres) total_mujeres_espanolas, sum(extranjeroshombres) total_hombres_extranjeros, sum(extranjerosmujeres) total_mujeres_extranjeras, desc_distrito distrito, desc_barrio barrio
+from padron_txt_3
+group by desc_distrito, desc_barrio
+order by desc_distrito, desc_barrio;
+
+select sum(espanoleshombres) total_hombres_espanoles, sum(espanolesmujeres) total_mujeres_espanolas, sum(extranjeroshombres) total_hombres_extranjeros, sum(extranjerosmujeres) total_mujeres_extranjeras, desc_distrito distrito, desc_barrio barrio
+from padron_parquet_3
+group by desc_distrito, desc_barrio
+order by desc_distrito, desc_barrio;
+``` 
+El tiempo de respuesta es mucho mayor en hive que en impala, ademas de que hive.
+
+`Hive`
+## 4. Sobre tablas particionadas.
+### 4.1. Crear tabla (Hive) padron_particionado particionada por campos DESC_DISTRITO y DESC_BARRIO  cuyos datos estén en formato parquet.
+``` 
+DROP TABLE padron_particionada;
+
+create table padron_particionada(
+COD_DISTRITO int,
+COD_DIST_BARRIO int,
+COD_BARRIO int,
+COD_DIST_SECCION int,
+COD_SECCION int,
+COD_EDAD_INT int,
+EspanolesHombres int,
+EspanolesMujeres int,
+ExtranjerosHombres int,
+ExtranjerosMujeres int
+)
+PARTITIONED BY (DESC_DISTRITO string, DESC_BARRIO string)
+STORED AS PARQUET;
+```  
+
+ ### 4.2. Insertar datos (en cada partición) dinámicamente (con Hive) en la tabla recién creada a partir de un select de la tabla padron_parquet_2.
+
+Antes de insertar los datos se aplica la configuracion de partion en hive
+```  
+SET hive.exec.dynamic.partition=true;
+SET hive.exec.dynamic.partition.mode=non-strict;
+SET hive.exec.max.dynamic.partitions = 10000;
+SET hive.exec.max.dynamic.partitions.pernode = 1000;
+```  
+Ahora se ejecuta el llenado de la tabla
+```
+FROM padron_parquet_3
+INSERT OVERWRITE TABLE padron_particionada
+PARTITION(desc_distrito, desc_barrio)
+SELECT cod_distrito, cod_dist_barrio, cod_barrio, cod_dist_seccion,
+cod_seccion, cod_edad_int, espanoleshombres, espanolesmujeres, extranjeroshombres, 
+extranjerosmujeres, desc_distrito, desc_barrio;
+
+describe padron_particionada;
+```
+`Impala`
+### 4.3. Hacer invalidate metadata en Impala de la base de datos padron_particionado.
+
+invalidate metadata datos_padron.padron_particionada;
+
+### 4.4.Calcular el total de EspanolesHombres, EspanolesMujeres, ExtranjerosHombres y ExtranjerosMujeres agrupado por DESC_DISTRITO y DESC_BARRIO para los distritos CENTRO, LATINA, CHAMARTIN, TETUAN, VICALVARO y BARAJAS.
+```
+select * from padron_particionada;
+
+select sum(espanoleshombres) total_hombres_espanoles, sum(espanolesmujeres) total_mujeres_espanolas, sum(extranjeroshombres) total_hombres_extranjeros, sum(extranjerosmujeres) total_mujeres_extranjeras, desc_distrito distrito, desc_barrio barrio
+from padron_particionada
+where desc_distrito in ("CENTRO", "LATINA", "CHAMARTIN", "TETUAN", "VICALVARO", "BARAJAS")
+group by desc_distrito, desc_barrio
+order by desc_distrito, desc_barrio;
+```
+
+`Hive`
+### 4.5. Llevar a cabo la consulta en Hive en las tablas padron_parquet y padron_partitionado. ¿Alguna conclusión?
+```
+select sum(espanoleshombres) total_hombres_espanoles, sum(espanolesmujeres) total_mujeres_espanolas, sum(extranjeroshombres) total_hombres_extranjeros, sum(extranjerosmujeres) total_mujeres_extranjeras, desc_distrito distrito, desc_barrio barrio
+from padron_parquet_2
+where desc_distrito in ("CENTRO", "LATINA", "CHAMARTIN", "TETUAN", "VICALVARO", "BARAJAS")
+group by desc_distrito, desc_barrio
+order by desc_distrito, desc_barrio;
+
+select sum(espanoleshombres) total_hombres_espanoles, sum(espanolesmujeres) total_mujeres_espanolas, sum(extranjeroshombres) total_hombres_extranjeros, sum(extranjerosmujeres) total_mujeres_extranjeras, desc_distrito distrito, desc_barrio barrio
+from padron_particionada
+where desc_distrito in ("CENTRO", "LATINA", "CHAMARTIN", "TETUAN", "VICALVARO", "BARAJAS")
+group by desc_distrito, desc_barrio
+order by desc_distrito, desc_barrio;
+```
+Tardan mas o menos lo mismo, pero mucho mas lento que impala.
+
+`Impala`
+### 4.6. Llevar a cabo la consulta en Impala en las tablas padron_parquet y padron_particionado. ¿Alguna conclusión?
+```
+select sum(espanoleshombres) total_hombres_espanoles, sum(espanolesmujeres) total_mujeres_espanolas, sum(extranjeroshombres) total_hombres_extranjeros, sum(extranjerosmujeres) total_mujeres_extranjeras, desc_distrito distrito, desc_barrio barrio
+from padron_parquet_2
+where desc_distrito in ("CENTRO", "LATINA", "CHAMARTIN", "TETUAN", "VICALVARO", "BARAJAS")
+group by desc_distrito, desc_barrio
+order by desc_distrito, desc_barrio;
+```
+
+El tiempo de ejecucion no tiene comparacion con HIVE, siendo Impala mucho mas reapido para las dos consultas
+
+### 4.7. Hacer consultas de agregación (Max, Min, Avg, Count) tal cual el ejemplo anterior con las 3 tablas (padron_txt_2, padron_parquet_2 y padron_particionado) y comparar rendimientos tanto en Hive como en Impala y sacar conclusiones.
+
+#### padron_txt_3
+```
+select max(espanoleshombres), max(espanolesmujeres), max(extranjeroshombres), max(extranjerosmujeres), desc_distrito distrito, desc_barrio barrio
+from padron_txt_3
+where desc_distrito in ("CENTRO", "LATINA", "CHAMARTIN", "TETUAN", "VICALVARO", "BARAJAS")
+group by desc_distrito, desc_barrio
+order by desc_distrito, desc_barrio;
+
+select min(espanoleshombres), min(espanolesmujeres), min(extranjeroshombres), min(extranjerosmujeres), desc_distrito distrito, desc_barrio barrio
+from padron_txt_3
+where desc_distrito in ("CENTRO", "LATINA", "CHAMARTIN", "TETUAN", "VICALVARO", "BARAJAS")
+group by desc_distrito, desc_barrio
+order by desc_distrito, desc_barrio;
+
+select avg(espanoleshombres), avg(espanolesmujeres),avg(extranjeroshombres), avg(extranjerosmujeres), desc_distrito distrito, desc_barrio barrio
+from padron_txt_3
+where desc_distrito in ("CENTRO", "LATINA", "CHAMARTIN", "TETUAN", "VICALVARO", "BARAJAS")
+group by desc_distrito, desc_barrio
+order by desc_distrito, desc_barrio;
+
+select count(espanoleshombres), count(espanolesmujeres),count(extranjeroshombres), count(extranjerosmujeres), desc_distrito distrito, desc_barrio barrio
+from padron_txt_3
+where desc_distrito in ("CENTRO", "LATINA", "CHAMARTIN", "TETUAN", "VICALVARO", "BARAJAS")
+group by desc_distrito, desc_barrio
+order by desc_distrito, desc_barrio;
+```
+#### padron_parquet_3
+```
+select max(espanoleshombres), max(espanolesmujeres), max(extranjeroshombres), max(extranjerosmujeres), desc_distrito distrito, desc_barrio barrio
+from padron_parquet_3
+where desc_distrito in ("CENTRO", "LATINA", "CHAMARTIN", "TETUAN", "VICALVARO", "BARAJAS")
+group by desc_distrito, desc_barrio
+order by desc_distrito, desc_barrio;
+
+select min(espanoleshombres), min(espanolesmujeres), min(extranjeroshombres), min(extranjerosmujeres), desc_distrito distrito, desc_barrio barrio
+from padron_parquet_3
+where desc_distrito in ("CENTRO", "LATINA", "CHAMARTIN", "TETUAN", "VICALVARO", "BARAJAS")
+group by desc_distrito, desc_barrio
+order by desc_distrito, desc_barrio;
+
+select avg(espanoleshombres), avg(espanolesmujeres),avg(extranjeroshombres), avg(extranjerosmujeres), desc_distrito distrito, desc_barrio barrio
+from padron_parquet_3
+where desc_distrito in ("CENTRO", "LATINA", "CHAMARTIN", "TETUAN", "VICALVARO", "BARAJAS")
+group by desc_distrito, desc_barrio
+order by desc_distrito, desc_barrio;
+
+select count(espanoleshombres), count(espanolesmujeres),count(extranjeroshombres), count(extranjerosmujeres), desc_distrito distrito, desc_barrio barrio
+from padron_parquet_3
+where desc_distrito in ("CENTRO", "LATINA", "CHAMARTIN", "TETUAN", "VICALVARO", "BARAJAS")
+group by desc_distrito, desc_barrio
+order by desc_distrito, desc_barrio;
+```
+#### padron_particionada
+```
+select max(espanoleshombres), max(espanolesmujeres), max(extranjeroshombres), max(extranjerosmujeres), desc_distrito distrito, desc_barrio barrio
+from padron_particionada
+where desc_distrito in ("CENTRO", "LATINA", "CHAMARTIN", "TETUAN", "VICALVARO", "BARAJAS")
+group by desc_distrito, desc_barrio
+order by desc_distrito, desc_barrio;
+
+select min(espanoleshombres), min(espanolesmujeres), min(extranjeroshombres), min(extranjerosmujeres), desc_distrito distrito, desc_barrio barrio
+from padron_particionada
+where desc_distrito in ("CENTRO", "LATINA", "CHAMARTIN", "TETUAN", "VICALVARO", "BARAJAS")
+group by desc_distrito, desc_barrio
+order by desc_distrito, desc_barrio;
+
+select avg(espanoleshombres), avg(espanolesmujeres),avg(extranjeroshombres), avg(extranjerosmujeres), desc_distrito distrito, desc_barrio barrio
+from padron_particionada
+where desc_distrito in ("CENTRO", "LATINA", "CHAMARTIN", "TETUAN", "VICALVARO", "BARAJAS")
+group by desc_distrito, desc_barrio
+order by desc_distrito, desc_barrio;
+
+select count(espanoleshombres), count(espanolesmujeres),count(extranjeroshombres), count(extranjerosmujeres), desc_distrito distrito, desc_barrio barrio
+from padron_particionada
+where desc_distrito in ("CENTRO", "LATINA", "CHAMARTIN", "TETUAN", "VICALVARO", "BARAJAS")
+group by desc_distrito, desc_barrio
+order by desc_distrito, desc_barrio;
+```
+Tablas parquet y particionada mas rapidas que las txt, sin embargo tendria que hacer otras priuebas para saber cual de estas ultimas es mas rapida.
+
+`Hive`
+#### padron_txt_3
+```
+select max(espanoleshombres), max(espanolesmujeres), max(extranjeroshombres), max(extranjerosmujeres), desc_distrito distrito, desc_barrio barrio
+from padron_txt_3
+where desc_distrito in ("CENTRO", "LATINA", "CHAMARTIN", "TETUAN", "VICALVARO", "BARAJAS")
+group by desc_distrito, desc_barrio
+order by desc_distrito, desc_barrio;
+
+select min(espanoleshombres), min(espanolesmujeres), min(extranjeroshombres), min(extranjerosmujeres), desc_distrito distrito, desc_barrio barrio
+from padron_txt_3
+where desc_distrito in ("CENTRO", "LATINA", "CHAMARTIN", "TETUAN", "VICALVARO", "BARAJAS")
+group by desc_distrito, desc_barrio
+order by desc_distrito, desc_barrio;
+
+select avg(espanoleshombres), avg(espanolesmujeres),avg(extranjeroshombres), avg(extranjerosmujeres), desc_distrito distrito, desc_barrio barrio
+from padron_txt_3
+where desc_distrito in ("CENTRO", "LATINA", "CHAMARTIN", "TETUAN", "VICALVARO", "BARAJAS")
+group by desc_distrito, desc_barrio
+order by desc_distrito, desc_barrio;
+
+select count(espanoleshombres), count(espanolesmujeres),count(extranjeroshombres), count(extranjerosmujeres), desc_distrito distrito, desc_barrio barrio
+from padron_txt_3
+where desc_distrito in ("CENTRO", "LATINA", "CHAMARTIN", "TETUAN", "VICALVARO", "BARAJAS")
+group by desc_distrito, desc_barrio
+order by desc_distrito, desc_barrio;
+```
+#### padron_parquet_3
+```
+select max(espanoleshombres), max(espanolesmujeres), max(extranjeroshombres), max(extranjerosmujeres), desc_distrito distrito, desc_barrio barrio
+from padron_parquet_3
+where desc_distrito in ("CENTRO", "LATINA", "CHAMARTIN", "TETUAN", "VICALVARO", "BARAJAS")
+group by desc_distrito, desc_barrio
+order by desc_distrito, desc_barrio;
+
+select min(espanoleshombres), min(espanolesmujeres), min(extranjeroshombres), min(extranjerosmujeres), desc_distrito distrito, desc_barrio barrio
+from padron_parquet_3
+where desc_distrito in ("CENTRO", "LATINA", "CHAMARTIN", "TETUAN", "VICALVARO", "BARAJAS")
+group by desc_distrito, desc_barrio
+order by desc_distrito, desc_barrio;
+
+select avg(espanoleshombres), avg(espanolesmujeres),avg(extranjeroshombres), avg(extranjerosmujeres), desc_distrito distrito, desc_barrio barrio
+from padron_parquet_3
+where desc_distrito in ("CENTRO", "LATINA", "CHAMARTIN", "TETUAN", "VICALVARO", "BARAJAS")
+group by desc_distrito, desc_barrio
+order by desc_distrito, desc_barrio;
+
+select count(espanoleshombres), count(espanolesmujeres),count(extranjeroshombres), count(extranjerosmujeres), desc_distrito distrito, desc_barrio barrio
+from padron_parquet_3
+where desc_distrito in ("CENTRO", "LATINA", "CHAMARTIN", "TETUAN", "VICALVARO", "BARAJAS")
+group by desc_distrito, desc_barrio
+order by desc_distrito, desc_barrio;
+```
+
+#### padron_particionada
+```
+select max(espanoleshombres), max(espanolesmujeres), max(extranjeroshombres), max(extranjerosmujeres), desc_distrito distrito, desc_barrio barrio
+from padron_particionada
+where desc_distrito in ("CENTRO", "LATINA", "CHAMARTIN", "TETUAN", "VICALVARO", "BARAJAS")
+group by desc_distrito, desc_barrio
+order by desc_distrito, desc_barrio;
+
+select min(espanoleshombres), min(espanolesmujeres), min(extranjeroshombres), min(extranjerosmujeres), desc_distrito distrito, desc_barrio barrio
+from padron_particionada
+where desc_distrito in ("CENTRO", "LATINA", "CHAMARTIN", "TETUAN", "VICALVARO", "BARAJAS")
+group by desc_distrito, desc_barrio
+order by desc_distrito, desc_barrio;
+
+select avg(espanoleshombres), avg(espanolesmujeres),avg(extranjeroshombres), avg(extranjerosmujeres), desc_distrito distrito, desc_barrio barrio
+from padron_particionada
+where desc_distrito in ("CENTRO", "LATINA", "CHAMARTIN", "TETUAN", "VICALVARO", "BARAJAS")
+group by desc_distrito, desc_barrio
+order by desc_distrito, desc_barrio;
+
+select count(espanoleshombres), count(espanolesmujeres),count(extranjeroshombres), count(extranjerosmujeres), desc_distrito distrito, desc_barrio barrio
+from padron_particionada
+where desc_distrito in ("CENTRO", "LATINA", "CHAMARTIN", "TETUAN", "VICALVARO", "BARAJAS")
+group by desc_distrito, desc_barrio
+order by desc_distrito, desc_barrio;
+```
+
+Mucho mas lento que IMpala tal como en los casos anteriores. Ademas de que al no ponerle nombre a las columnas de las funciones agregadas, le coloca _c0, _c1 etc... 
