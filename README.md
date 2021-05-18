@@ -11,9 +11,9 @@ https://datos.madrid.es/egob/catalogo/200076-1-padron.csv
 
 llevar a cabo lo siguiente:
 
-1. Creación de tablas en formato texto.
+## 1. Creación de tablas en formato texto.
 
-- 1.1. Crear Base de datos "datos_padron".
+### 1.1. Crear Base de datos "datos_padron".
 
 ```
 Drop database if exists datos_padron;
@@ -21,7 +21,7 @@ create database datos_padron;
 Use datos padron;
 ```
 
-- 1.2. Crear la tabla de datos padron_txt con todos los campos del fichero CSV y cargar los datos mediante el comando LOAD DATA LOCAL INPATH. La tabla tendrá formato texto y tendrá como delimitador de campo el caracter ';' y los campos que en el documento original están encerrados en comillas dobles '"' no deben estar envueltos en estos caracteres en la tabla de Hive (es importante indicar esto utilizando el serde de OpenCSV, si no la importación de las variables que hemos indicado como numéricas fracasará ya que al estar envueltos en comillas los toma como strings) y se deberá omitir la cabecera del fichero de datos al crear la tabla.
+### 1.2. Crear la tabla de datos padron_txt con todos los campos del fichero CSV y cargar los datos mediante el comando LOAD DATA LOCAL INPATH. La tabla tendrá formato texto y tendrá como delimitador de campo el caracter ';' y los campos que en el documento original están encerrados en comillas dobles '"' no deben estar envueltos en estos caracteres en la tabla de Hive (es importante indicar esto utilizando el serde de OpenCSV, si no la importación de las variables que hemos indicado como numéricas fracasará ya que al estar envueltos en comillas los toma como strings) y se deberá omitir la cabecera del fichero de datos al crear la tabla.
 
 ```
 DROP TABLE padron_raw;
@@ -82,7 +82,7 @@ show create table padron_txt;
 
 ```
 
-- 1.3. Hacer trim sobre los datos para eliminar los espacios innecesarios guardando la tabla resultado como padron_txt_2. (Este apartado se puede hacer creando la tabla
+### 1.3. Hacer trim sobre los datos para eliminar los espacios innecesarios guardando la tabla resultado como padron_txt_2. (Este apartado se puede hacer creando la tabla
 con una sentencia CTAS.)
 
 ```
@@ -110,11 +110,11 @@ show create table padron_txt_2;
 -- totalSize = 12 703 259 
 ```
 
-- 1.4. Investigar y entender la diferencia de incluir la palabra LOCAL en el comando LOAD DATA.
+### 1.4. Investigar y entender la diferencia de incluir la palabra LOCAL en el comando LOAD DATA.
 
 Local es para usar los archivos fuera de hdfs, al quitar local busca dentro de hdfs
 
-- 1.5. En este momento te habrás dado cuenta de un aspecto importante, los datos nulos de nuestras tablas vienen representados por un espacio vacío y no por un identificador de nulos comprensible para la tabla. Esto puede ser un problema para el tratamiento posterior de los datos. Podrías solucionar esto creando una nueva tabla utiliando sentencias case when que sustituyan espacios en blanco por 0. Para esto primero comprobaremos que solo hay espacios en blanco en las variables numéricas correspondientes a las últimas 4 variables de nuestra tabla (podemos hacerlo con alguna sentencia de HiveQL) y luego aplicaremos las sentencias case when para sustituir por 0 los espacios en blanco. (Pista: es útil darse cuenta de que un espacio vacío es un campo con longitud 0). Haz esto solo para la tabla padron_txt.
+### 1.5. En este momento te habrás dado cuenta de un aspecto importante, los datos nulos de nuestras tablas vienen representados por un espacio vacío y no por un identificador de nulos comprensible para la tabla. Esto puede ser un problema para el tratamiento posterior de los datos. Podrías solucionar esto creando una nueva tabla utiliando sentencias case when que sustituyan espacios en blanco por 0. Para esto primero comprobaremos que solo hay espacios en blanco en las variables numéricas correspondientes a las últimas 4 variables de nuestra tabla (podemos hacerlo con alguna sentencia de HiveQL) y luego aplicaremos las sentencias case when para sustituir por 0 los espacios en blanco. (Pista: es útil darse cuenta de que un espacio vacío es un campo con longitud 0). Haz esto solo para la tabla padron_txt.
 
 ```
 drop table padron_txt_3;
@@ -140,7 +140,7 @@ show create table padron_txt_3;
 -- totalSize = 11 947 015 
 ```
 
-- 1.6. Una manera tremendamente potente de solucionar todos los problemas previos (tanto las comillas como los campos vacíos que no son catalogados como null y los espacios innecesarios) es utilizar expresiones regulares (regex) que nos proporciona OpenCSV. Para ello utilizamos :
+### 1.6. Una manera tremendamente potente de solucionar todos los problemas previos (tanto las comillas como los campos vacíos que no son catalogados como null y los espacios innecesarios) es utilizar expresiones regulares (regex) que nos proporciona OpenCSV. Para ello utilizamos :
 ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.RegexSerDe'
 WITH SERDEPROPERTIES ('input.regex'='XXXXXXX')
 Donde XXXXXX representa una expresión regular que debes completar y que identifique el formato exacto con el que debemos interpretar cada una de las filas de nuestro CSV de entrada. Para ello puede ser útil el portal "regex101". Utiliza este método para crear de nuevo la tabla padron_txt_2.
@@ -183,12 +183,12 @@ Hago un select antes de y despues para ver si reconoce la letra ñ (buscar opañ
 select * from padron_txt_reg where Upper(desc_barrio) LIKE "O%";
 ```
 
-2. Investigamos el formato columnar parquet.
+## 2. Investigamos el formato columnar parquet.
 
-- 2.1. ¿Qué es CTAS?
+### 2.1. ¿Qué es CTAS?
 Create Table As Select - Crear una tabla a partir de otra, haciendo select de las columnas de las colmnas que se quieran tomar para esta nueva tabla.
 
-- 2.2. Crear tabla Hive padron_parquet (cuyos datos serán almacenados en el formato columnar parquet) a través de la tabla padron_txt mediante un CTAS.
+### 2.2. Crear tabla Hive padron_parquet (cuyos datos serán almacenados en el formato columnar parquet) a través de la tabla padron_txt mediante un CTAS.
 ```
 DROP TABLE padron_parquet;
 
@@ -214,8 +214,7 @@ show create table padron_parquet;
 -- rawDataSize = 2853900 
 -- totalSize = 876 046 
 ```
-- 2.3. Crear tabla Hive padron_parquet_2 a través de la tabla padron_txt_2 mediante un CTAS. En este punto deberíamos tener 4 tablas, 2 en txt (padron_txt y padron_txt_2, la primera con espacios innecesarios y la segunda sin espacios innecesarios) y otras dos tablas en formato parquet (padron_parquet y
-padron_parquet_2, la primera con espacios y la segunda sin ellos).
+### 2.3. Crear tabla Hive padron_parquet_2 a través de la tabla padron_txt_2 mediante un CTAS. En este punto deberíamos tener 4 tablas, 2 en txt (padron_txt y padron_txt_2, la primera con espacios innecesarios y la segunda sin espacios innecesarios) y otras dos tablas en formato parquet (padron_parquet y padron_parquet_2, la primera con espacios y la segunda sin ellos).
 ```
 drop table padron_parquet_2;
 
@@ -247,8 +246,7 @@ show create table padron_parquet_3;
 -- totalSize = 937 485 
 ```
 
-- 2.4. Opcionalmente también se pueden crear las tablas directamente desde 0 (en lugar de mediante CTAS) en formato parquet igual que lo hicimos para el formato txt incluyendo la sentencia STORED AS PARQUET. Es importante para comparaciones posteriores que la tabla padron_parquet conserve los espacios innecesarios y la tabla padron_parquet_2 no los tenga. Dejo a tu elección cómo hacerlo.
-
+### 2.4. Opcionalmente también se pueden crear las tablas directamente desde 0 (en lugar de mediante CTAS) en formato parquet igual que lo hicimos para el formato txt incluyendo la sentencia STORED AS PARQUET. Es importante para comparaciones posteriores que la tabla padron_parquet conserve los espacios innecesarios y la tabla padron_parquet_2 no los tenga. Dejo a tu elección cómo hacerlo.
 ```
 drop table padron_parquet_reg;
 
@@ -278,7 +276,7 @@ load data local inpath '/home/cloudera/padron/padron.csv'
 into table padron_parquet_reg;
 ```
 
-- 2.5. Investigar en qué consiste el formato columnar parquet y las ventajas de trabajar con este tipo de formatos.
+### 2.5. Investigar en qué consiste el formato columnar parquet y las ventajas de trabajar con este tipo de formatos.
 
 El formato Parquet es un formato open-source de almacenamiento en columnas para Hadoop.
 Fue creado para poder disponer de un formato libre de compresión y codificación eficiente.
@@ -291,47 +289,85 @@ Los tipos de compresión recomendados con este formato son:
 snappy (valor predeterminado)
 gzip
 
-- 2.6. Comparar el tamaño de los ficheros de los datos de las tablas padron_txt (txt), padron_txt_2 (txt pero no incluye los espacios innecesarios), padron_parquet y padron_parquet_2 (alojados en hdfs cuya ruta se puede obtener de la propiedad location de cada tabla por ejemplo haciendo "show create table").
+### 2.6. Comparar el tamaño de los ficheros de los datos de las tablas padron_txt (txt), padron_txt_2 (txt pero no incluye los espacios innecesarios), padron_parquet y padron_parquet_2 (alojados en hdfs cuya ruta se puede obtener de la propiedad location de cada tabla por ejemplo haciendo "show create table").
 
-### padron_raw (txt con serde sin cast - colomunas como string)
-- totalSize = 22 594 627, 
+#### padron_raw (txt con serde sin cast - colomunas como string)
+-- totalSize = 22 594 627, 
 
+#### padron_txt (ctas de padron_raw con cast para los tipos de columnas)
+-- totalSize = 17 209 982
 
-### padron_txt (ctas de padron_raw con cast para los tipos de columnas)
-- numRows = 237 825 
-- rawDataSize = 16 972 157 
-- totalSize = 17 209 982'
+#### table padron_txt_2 (ctas de padron_txt con trim en columnas string)
+-- totalSize = 12 703 259 
 
+#### table padron_txt_3 (ctas de padron_raw poniendo 0 a los valores vacios y cast a topdas las columnas)
+-- totalSize = 12 422 665
 
-### table padron_txt_2 (ctas de padron_txt con trim en columnas string)
-- numRows = 237 825
-- rawDataSize = 12 465 434 
-- totalSize = 12 703 259 
+#### table padron_txt_reg (desde 0 con expresiones regulares - columnas como string)
+-- totalSize = 22 594 627
 
+#### table padron_parquet (ctas de padron_raw con cast a las columnas)
+-- totalSize = 876 046 
 
-### table padron_txt_3 (ctas de padron_raw poniendo 0 a los valores vacios y cast a topdas las columnas)
-- numRows = 237 825 
-- rawDataSize = 11 709 190 
-- totalSize = 11 947 015 
+#### table padron_parquet_2 (ctas de padron_txt_2)
+-- totalSize = 874 007 
 
+#### table padron_parquet_3 (ctas de padron_txt_3)
+-- totalSize = 937 485 
 
-### table padron_txt_reg (desde 0 con expresiones regulares - columnas como string)
-- totalSize = 22 594 627
+## 3. Juguemos con Impala
 
+### 3.1. ¿Qué es Impala?
+Es un motor SQL de elevado performance pensada para operar sobre grandes volúmenes de datos.
+El motor es MPP: procesamiento masivo en paralelo
+Con latencias de Milisegundos.
 
-### table padron_parquet (ctas de padron_raw con cast a las columnas)
-- numRows = 237 825
-- rawDataSize = 2 853 900 
-- totalSize = 876 046 
+Impala corre sobre clusters Hadoop.
+Puede ejecutar Queries sobre HDFS o Hbase.
+Lee y escribe datos sobre ficheros con tipos de datos típicos de Hadoop.
+Originalmente desarrollada por Cloudera.
+Hoy en día es un proyecto perteneciente al ASF (Apache Software Foundation)
+Es 100% open source.
+Todavía está en proceso de incubación.
 
+### 3.2. ¿En qué se diferencia de Hive?
+Impala ejecuta las queriesdirectamente sobre el clusteren lugar de ejecutar MapReducepara procesar.
+Es en torno a unas 5 veces más rápido que Hiveo Pig, aunque  a menudo puede ser hasta 20 veces más rápido.
+Actualmente hay una serie de funcionalidades que Impala no soporta pero Hive sí
+- Ficheros con tipos de datos a medida.
+- El tipo de datos DATE.
+- Funciones XML y JSON.
+- Algunas funciones de agregación como: “covar_pop, covar_samp, corr, percentile, percentile_approx, histogram_numeric, collect_set”
+- Sampling(que es el ejecutar queries sobre un subset de una tabla en lugar de sobre toda la tabla).
+- Vistas laterales (sobre una columna de una tabla, fila a fila, se le aplica una función (que crea un resultado en forma de 
+vista en ejecución) y sobre ese resultado se aplica otra función, que es lo que se muestra.
+- Multilples cláusulas DISTINCT por query.
+- UDFs(soportadas a partir de impala  1.2).
 
-### table padron_parquet_2 (ctas de padron_txt_2)
-- numRows = 237 825  
-- rawDataSize = 2 853 900  
-- totalSize = 874 007 
+### 3.3. Comando INVALIDATE METADATA, ¿en qué consiste?
 
+Marca los metadatos de una o todas las tablas como obsoletos. 
+Requerido después de que se crea una tabla a través del shell de Hive, 
+antes de que la tabla esté disponible para consultas de Impala. 
+La próxima vez que el nodo actual de Impala realiza una consulta en una tabla 
+cuyos metadatos están invalidados, Impala vuelve a cargar los metadatos asociados 
+antes de que continúe la consulta. 
+Esta es una operación relativamente costosa en comparación con la actualización incremental 
+de metadatos realizada por la instrucción REFRESH, por lo que en el escenario común de agregar 
+nuevos archivos de datos a una tabla existente, prefiera REFRESH en lugar de INVALIDATE METADATA. 
 
-### table padron_parquet_3 (ctas de padron_txt_3)
-- numRows = 237 825 
-- rawDataSize =  2 616 075 
-- totalSize = 937 485 
+### 3.4. Hacer invalidate metadata en Impala de la base de datos datos_padron.
+```
+use datos_padron;
+INVALIDATE METADATA;
+```
+### 3.5. Calcular el total de EspanolesHombres, espanolesMujeres, ExtranjerosHombres y ExtranjerosMujeres agrupado por DESC_DISTRITO y DESC_BARRIO.
+```
+select sum(espanoleshombres) total_hombres_españoles, sum(espanolesmujeres) total_mujeres_españolas, sum(extranjeroshombres) total_hombres_extranjeros, sum(extranjerosmujeres) total_mujeres_extranjeras, desc_distrito distrito, desc_barrio barrio
+from padron_txt_3
+group by desc_distrito, desc_barrio
+order by desc_distrito, desc_barrio;
+```
+### 3.6. Llevar a cabo las consultas en Hive en las tablas padron_txt_2 y padron_parquet_2 (No deberían incluir espacios innecesarios). ¿Alguna conclusión?
+
+El tiempo de respuesta es mucho mayor en hive que en impala, ademas de que hive
